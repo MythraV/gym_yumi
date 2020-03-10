@@ -23,7 +23,7 @@ class Yumi():
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
 
 class YumiEnv(gym.Env):
-    def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.2):
+    def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.1):
         self.pr = PyRep()
         SCENE_FILE = '/media/crl/DATA/Mythra/Research/Forward/gym-yumi/gym_yumi/envs/yumi_setup.ttt'
         self.pr.launch(SCENE_FILE, headless=headless)
@@ -152,7 +152,7 @@ class YumiEnv(gym.Env):
             The reward function
             Put your reward function here
         '''
-        reward = 10-np.linalg.norm(self.observation[0:3] - self.observation[6:9])
+        reward = 1.0-2*np.linalg.norm(self.observation[0:3] - self.observation[6:9])
         return reward
 
 if __name__ == "__main__":
