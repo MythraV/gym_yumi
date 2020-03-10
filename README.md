@@ -21,6 +21,7 @@ Please install the following requirements before using this environment. It is r
 git clone https://github.com/MythraV/gym_yumi.git
 cd gym-yumi
 pip install -e .
+```
 
 # Example Usage
 Test environment with gym
