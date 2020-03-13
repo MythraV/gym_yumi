@@ -56,6 +56,10 @@ class YumiEnv(gym.Env):
             self.rewardfcn = self._get_reward
         else:
             self.rewardfcn = rewardfun
+        self.default_config = [-1.0122909545898438, -1.5707963705062866,
+                             0.9759880900382996, 0.6497860550880432,
+                              1.0691887140274048, 1.1606439352035522,
+                               0.3141592741012573]
 
     def _make_observation(self):
         """Query V-rep to make observation.
@@ -103,6 +107,8 @@ class YumiEnv(gym.Env):
         # if the episode should end earlier
         # done = if position outside user model space
         done = False
+        if np.linalg.norm(self.observation[0:3] - self.observation[6:9])<0.02:
+            done=True
         return self.observation, reward, done, {}
 
     def reset(self):
@@ -115,7 +121,10 @@ class YumiEnv(gym.Env):
         self.pr.start()
 
         self.limb.set_joint_mode(self.mode)
+        for i in range(len(self.limb.joints)):
+            self.limb.set_joint_position(i,self.default_config[i])
         self._make_observation()
+        print(self.observation)
         return self.observation
 
     def render(self, mode='human', close=False):
@@ -157,7 +166,9 @@ class YumiEnv(gym.Env):
 
 if __name__ == "__main__":
     "Example usage for the YumiRLEnv"
-    env = YumiRLEnv('left','peg_target_res', test_reward,mode='passive', headless=True,maxval=0.1)
+    env = YumiEnv('left','peg_target_res',mode='passive', headless=True,maxval=0.1)
+    print([env.limb.get_joint_position(x) for x in range(7)])
+    time.sleep(1)
     for ieps in range(20):
         observation = env.reset()
         total_reward = 0
