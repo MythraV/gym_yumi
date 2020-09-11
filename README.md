@@ -8,9 +8,11 @@ gym environment for ABB Yumi robot using VREP simulator.
 
 Please install the following requirements before using this environment. It is recommended to do this in a virtual environment..
 
-[VREP](https://www.coppeliarobotics.com/previousVersions) version 3.6.2
-[PyRep](https://github.com/MythraV/PyRep.git) version compatible with VREP 3.6
-[gym](https://github.com/openai/gym.git)
+Python 3.8.5
+[VREP](https://www.coppeliarobotics.com/previousVersions) version 4.1.0
+[PyRep](https://github.com/MythraV/PyRep.git) version 1.2
+[gym](https://github.com/openai/gym.git) version 0.17.2
+
 
 ## RL setup
 
@@ -28,7 +30,8 @@ Test environment with gym
 ```bash
 python
 import gym
-env = gym.make('gym-yumi:yumi-pegtransfer-v0')
+import gym_yumi
+env = gym.make('yumi-pegtransfer-v0')
 ```
 Running with openai/baselines or stable_baselines
 ```bash
