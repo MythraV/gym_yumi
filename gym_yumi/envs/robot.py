@@ -1,4 +1,4 @@
-from pyrep.backend.vrep import *
+#from pyrep.backend.vrep import *
 from os.path import dirname, join, abspath
 from pyrep.objects.dummy import Dummy
 from pyrep.objects.joint import Joint
