@@ -3,3 +3,4 @@
 /dist
 /stable-baselines
 /models
+.pyc
