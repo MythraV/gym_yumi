@@ -39,13 +39,16 @@ class YumiEnv(gym.Env):
         shape_names = [goal]
         # Relevant scene objects
         self.oh_shape = [Shape(x) for x in shape_names]
+        #print("oh_shape 1", self.oh_shape)
         # Add tool tip
         self.oh_shape.append(self.limb.target)
+        #print("oh_shape 2", self.oh_shape)
         # Number of actions
         num_act = len(self.limb.joints)
         # Observation space size
         # 6 per object (xyzrpy) + 6 dimensions
         num_obs = len(self.oh_shape)*3*2
+        #print("num_obs", num_obs)
         # Setup action and observation spaces
         act = np.array( [maxval] * num_act )
         obs = np.array(          [np.inf]          * num_obs )
@@ -65,13 +68,13 @@ class YumiEnv(gym.Env):
         """Query V-rep to make observation.
            The observation is stored in self.observation
         """
-        lst_o = [];
+        lst_o = []
         # example: include position, linear and angular velocities of all shapes
         for oh in self.oh_shape:
-            lst_o += oh.get_position() 	# position
-            lst_o += oh.get_orientation()
+            lst_o.extend(oh.get_position()) 	# position
+            lst_o.extend(oh.get_orientation())
 
-        self.observation = np.array(lst_o).astype('float32');
+        self.observation = np.array(lst_o).astype('float32')
 
     def _make_action(self, actions):
         """Query V-rep to make action.
@@ -124,7 +127,7 @@ class YumiEnv(gym.Env):
         for i in range(len(self.limb.joints)):
             self.limb.set_joint_position(i,self.default_config[i])
         self._make_observation()
-        print(self.observation)
+        #print(self.observation)
         return self.observation
 
     def render(self, mode='human', close=False):
