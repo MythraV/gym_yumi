@@ -3,4 +3,5 @@
 /dist
 /stable-baselines
 /models
-.pyc
+*.pyc
+.vscode/
