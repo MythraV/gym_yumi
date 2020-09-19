@@ -11,7 +11,7 @@ from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 # for some reason this crashes if performed after the stable_baselines imports?
 #env = make_vec_env('yumi-pegtransfer-v0')
 
-def main():
+def main(model_path = "ppo2_yumi"):
   num_cpu = 6
 
   # envs = [envs.YumiEnv('left','peg_target_res',mode='passive', headless=True,maxval=0.1) for i in range(num_cpu)]
@@ -36,7 +36,7 @@ def main():
 
   model = PPO2(MlpPolicy, env, verbose=1, tensorboard_log='./tensorboard/ppo2/')
   model.learn(total_timesteps=int(2e5))
-  model.save('ppo2_yumi')
+  model.save(model_path)
 
   '''
   obs = env.reset()
@@ -53,4 +53,8 @@ def main():
   ValueError: operands could not be broadcast together with shapes (0,) (3,) 
   '''
 if __name__ == "__main__":
-  main()
+  if (len(sys.argv) == 2):
+    model_path = sys.argv[1]
+    main(model_path)
+  else:
+    main()
