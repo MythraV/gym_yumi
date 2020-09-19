@@ -5,9 +5,9 @@ from gym_yumi import envs
 #env = make_vec_env('yumi-pegtransfer-v0')
 
 num_cpu = 6
-
+print("dad")
 envs = [envs.YumiEnv('left','peg_target_res',mode='passive', headless=True,maxval=0.1) for i in range(num_cpu)]
-
+print("d")
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines import PPO2
 from stable_baselines.common import make_vec_env
@@ -30,10 +30,13 @@ def make_env(i, seed=0):
     set_global_seeds(seed)
     return _init
 
-env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
+env = SubprocVecEnv([make_env(i, i) for i in range(num_cpu)])
 
+print("before")
 model = PPO2(MlpPolicy, env, verbose=1, tensorboard_log='./tensorboard/ppo2/')
+print("between")
 model.learn(total_timesteps=int(2e5))
+print("after")
 model.save('ppo2_yumi')
 
 '''
