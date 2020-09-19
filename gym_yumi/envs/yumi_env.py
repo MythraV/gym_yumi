@@ -25,7 +25,7 @@ class Yumi():
 class YumiEnv(gym.Env):
     def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.1):
         self.pr = PyRep()
-        SCENE_FILE = '/home/daniel/Projects/Python/gym_yumi/gym_yumi/envs/yumi_setup.ttt'
+        SCENE_FILE = '/homes/lawson95/CRL/gym_yumi/gym_yumi/envs/yumi_setup.ttt'
         self.pr.launch(SCENE_FILE, headless=headless)
         self.pr.start()
         yumi = Yumi()
