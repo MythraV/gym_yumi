@@ -36,6 +36,9 @@ def main(new_model_name = "ppo2_yumi", old_model_name = None):
 
     if old_model_name:
         model = PPO2.load(os.path.join('./models/', old_model_name))
+        model.set_env(env)
+        model.verbose = 1
+        model.tensorboard_log = os.path.join('./tensorboard/ppo2', new_model_name)
     else:
         model = PPO2(MlpPolicy, env, verbose=1, tensorboard_log=os.path.join('./tensorboard/ppo2', new_model_name))
     checkpoint_callback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join("./models", new_model_name, "checkpoints"))
@@ -44,9 +47,10 @@ def main(new_model_name = "ppo2_yumi", old_model_name = None):
 
 if __name__ == "__main__":
     # both models expected to be in the models folder
+    # ex python train_ppo.py ppo2_yumi_2e6_2e5  ppo2_yumi_2e5
     assert (len(sys.argv) >= 2), "try: python train_ppo.py [new_model_name] [old_model_name](optional)"
     new_model_name = sys.argv[1]
-    if (len(sys.argv == 3)):
+    if (len(sys.argv) == 3):
         old_model_name = sys.argv[2]
     else:
         old_model_name = None
