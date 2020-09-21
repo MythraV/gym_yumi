@@ -13,9 +13,9 @@ from stable_baselines.common.callbacks import CheckpointCallback
 
 
 def main(new_model_name = "ppo2_yumi", old_model_name = None):
-    num_cpu = 8
+    num_cpu = 16
     timesteps = 2e6
-    save_freq = 1e5
+    save_freq = 1e4
     def make_env(rank, seed=0):
         """
         Utility function for multiprocessed env.
@@ -41,7 +41,7 @@ def main(new_model_name = "ppo2_yumi", old_model_name = None):
         model.tensorboard_log = os.path.join('./tensorboard/ppo2', new_model_name)
     else:
         model = PPO2(MlpPolicy, env, verbose=1, tensorboard_log=os.path.join('./tensorboard/ppo2', new_model_name))
-    checkpoint_callback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join("./models", new_model_name, "checkpoints"))
+    checkpoint_callback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join("./models", new_model_name, "checkpoints/"))
     model.learn(total_timesteps=int(timesteps), callback = checkpoint_callback)
     model.save(os.path.join('./models', new_model_name))
 
