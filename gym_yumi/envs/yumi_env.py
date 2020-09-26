@@ -6,7 +6,7 @@ import time
 import gym
 from gym import spaces
 import numpy as np
-
+import os
 class Yumi():
     def __init__(self):
         joint_names = {'left':[
@@ -23,9 +23,11 @@ class Yumi():
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
 
 class YumiEnv(gym.Env):
-    def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.1):
+    def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.1, SCENE_FILE = None):
         self.pr = PyRep()
-        SCENE_FILE = '/home/daniel/Projects/Python/gym_yumi/gym_yumi/envs/yumi_setup.ttt'
+        if SCENE_FILE is None:
+            SCENE_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'yumi_setup.ttt')
+        # SCENE_FILE = '/homes/lawson95/CRL/gym_yumi/gym_yumi/envs/yumi_setup.ttt'
         self.pr.launch(SCENE_FILE, headless=headless)
         self.pr.start()
         yumi = Yumi()
@@ -164,7 +166,16 @@ class YumiEnv(gym.Env):
             The reward function
             Put your reward function here
         '''
-        reward = 1.0-2*np.linalg.norm(self.observation[0:3] - self.observation[6:9])
+        distance = abs(np.linalg.norm(self.observation[0:3] - self.observation[6:9]))
+        
+        #reward = 1.0-2*distance
+        
+        min_distance = .01
+        if distance <= min_distance:
+            reward = 10
+        else:
+            reward = -2 * abs(.01 - 2 * min_distance)
+
         return reward
 
 if __name__ == "__main__":
