@@ -168,13 +168,13 @@ class YumiEnv(gym.Env):
         '''
         distance = abs(np.linalg.norm(self.observation[0:3] - self.observation[6:9]))
         
-        #reward = 1.0-2*distance
+        reward = 1.0-2*distance
         
         min_distance = .01
         if distance <= min_distance:
             reward = 10
         else:
-            reward = -2 * abs(.01 - 2 * min_distance)
+            reward = -2 * abs(.01 - 2 * distance)
 
         return reward
 
