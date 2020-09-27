@@ -13,7 +13,7 @@ from stable_baselines.common.callbacks import CheckpointCallback
 
 
 def main(new_model_name = "ppo2_yumi", old_model_name = None):
-    num_cpu = 16
+    num_cpu = 24
     timesteps = 2e6
     save_freq = 1e4
     def make_env(rank, seed=0):
