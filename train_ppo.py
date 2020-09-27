@@ -26,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     reacher = args.reacher
-    new_model_name = args.new_model
+    new_model_name = args.new_name
     old_model_name = args.old_name
     num_cpu = args.num_cpu
     timesteps = 2e6
