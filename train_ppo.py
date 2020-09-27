@@ -52,7 +52,7 @@ def main():
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     if reacher:
-        model = PPO2(MlpPolicy, env, verbose=1)
+        model = PPO2(MlpPolicy, env, verbose=1, tensorboard_log=os.path.join('./tensorboard/ppo2', new_model_name))
         reacher_parameters = pickle.load(open('./models/parameters_reacher.pkl', 'rb'))
         reacher_dictionary = reacher_parameters[1]
 
