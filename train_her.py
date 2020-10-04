@@ -6,7 +6,8 @@ import gym_yumi
 import argparse
 import pickle
 from gym_yumi import envs
-from stable_baselines.common.policies import MlpPolicy
+from stable_baselines.ddpg.policies import MlpPolicy
+from stable_baselines.ddpg import NormalActionNoise
 from stable_baselines import DDPG, HER
 from stable_baselines.common import make_vec_env
 from stable_baselines.common import set_global_seeds
@@ -17,7 +18,6 @@ from stable_baselines.her import GoalSelectionStrategy, HERGoalEnvWrapper
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--num-cpu', default=1, type=int, help='number of cpu threads to use for training')
     parser.add_argument('--new-name', default="ppo2_yumi", type=str, help='name of model to train')
     parser.add_argument('--old-name', default=None, type=str, help='name of model to train from')
 
@@ -25,37 +25,26 @@ def main():
 
     new_model_name = args.new_name
     old_model_name = args.old_name
-    num_cpu = args.num_cpu
-    timesteps = 2e6
+    timesteps = 2e5
     save_freq = 1e4
 
-
-    def make_env(rank, seed=0):
-        """
-        Utility function for multiprocessed env.
-        
-        :param env_id: (str) the environment ID
-        :param num_env: (int) the number of environment you wish to have in subprocesses
-        :param seed: (int) the inital seed for RNG
-        :param rank: (int) index of the subprocess
-        """
-        def _init():
-            env = envs.GoalYumiEnv('left','peg_target_res',mode='passive', headless=True,maxval=0.1)
-            env.seed(seed + rank)
-            return env
-        set_global_seeds(seed)
-        return _init
-
-    env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
-
+    env = envs.GoalYumiEnv('left','peg_target_res',mode='passive', headless=True,maxval=0.1)
     if old_model_name:
         model = HER.load(os.path.join('./models/', old_model_name), env=env)
         #model.set_env(env)
         model.verbose = 1
         model.tensorboard_log = os.path.join('./tensorboard/her', new_model_name)
     else:
+        n_actions = env.action_space.shape[0]
+        noise_std = 0.2
+        action_noise = NormalActionNoise(mean=np.zeros(n_actions), sigma=noise_std * np.ones(n_actions))
+        
         model = HER(MlpPolicy, env, DDPG, 
                     goal_selection_strategy=GoalSelectionStrategy.FUTURE,
+                    policy_kwargs=dict(layers=[256, 256, 256]),
+                    gamma=0.95, batch_size=256, buffer_size=1000000,
+                    actor_lr=1e-3,critic_lr=1e-3, random_exploration=.3,
+                    normalize_observations=True, action_noise=action_noise,
                     verbose=1, tensorboard_log=os.path.join('./tensorboard/her', new_model_name))
    
     checkpoint_callback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join("./models", new_model_name, "checkpoints/"))
