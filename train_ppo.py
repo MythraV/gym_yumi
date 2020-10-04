@@ -13,12 +13,6 @@ from stable_baselines.common import set_global_seeds
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines.common.callbacks import CheckpointCallback
 
-
-<<<<<<< HEAD
-def main(new_model_name = "ppo2_yumi", old_model_name = None):
-    num_cpu = 24
-=======
-
 def main():
     parser = argparse.ArgumentParser()
 
@@ -33,7 +27,6 @@ def main():
     new_model_name = args.new_name
     old_model_name = args.old_name
     num_cpu = args.num_cpu
->>>>>>> f180b954491cc094bf5fece9a2dc6efe199d74b2
     timesteps = 2e6
     save_freq = 1e4
 
