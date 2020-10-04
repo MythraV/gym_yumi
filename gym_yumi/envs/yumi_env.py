@@ -100,7 +100,7 @@ class YumiEnv(gym.Env):
         return np.linalg.norm(desired_goal - achieved_goal)
 
     def _done(self):
-        if self._get_distance < self.terminal_distance:
+        if self._get_distance() < self.terminal_distance:
             return True
         return False
 
@@ -199,11 +199,15 @@ class YumiEnv(gym.Env):
 
 
 
-class GoalYumiEnv(GoalEnv, YumiEnv):
+class GoalYumiEnv(YumiEnv, GoalEnv):
     def __init__(self, *args, **kwargs):
         YumiEnv.__init__(self, *args, **kwargs)
         self.reward_name = 'sparse_reward'
-
+        self.observation_space = spaces.Dict({
+            'observation': self.observation_space,
+            'achieved_goal': spaces.Box(-np.inf, np.inf, shape=(3,)),
+            'desired_goal': spaces.Box(-np.inf, np.inf, shape=(3,))
+        })
     def _make_observation(self):
         """
         Helper to create the observation.
