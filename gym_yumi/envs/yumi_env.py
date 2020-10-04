@@ -4,7 +4,8 @@ from pyrep.objects.shape import Shape
 from pyrep.objects.object import Object
 import time
 import gym
-from gym import spaces
+from gym import spaces, GoalEnv
+from collections import OrderedDict
 import numpy as np
 import os
 class Yumi():
@@ -23,7 +24,7 @@ class Yumi():
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
 
 class YumiEnv(gym.Env):
-    def __init__(self, limb='left', goal='peg_target_res', rewardfun=None, headless=False, mode='passive', maxval=0.1, SCENE_FILE = None):
+    def __init__(self, limb='left', goal='peg_target_res', reward_name='original_reward', headless=False, mode='passive', maxval=0.1, SCENE_FILE = None):
         self.pr = PyRep()
         if SCENE_FILE is None:
             SCENE_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'yumi_setup.ttt')
@@ -57,10 +58,10 @@ class YumiEnv(gym.Env):
 
         self.action_space      = spaces.Box(-act,act)
         self.observation_space = spaces.Box(-obs,obs)
-        if rewardfun is None:
-            self.rewardfcn = self._get_reward
-        else:
-            self.rewardfcn = rewardfun
+
+        self.reward_name = reward_name
+        self.rewardfcn = self._get_reward
+        self.terminal_distance = .02
         self.default_config = [-1.0122909545898438, -1.5707963705062866,
                              0.9759880900382996, 0.6497860550880432,
                               1.0691887140274048, 1.1606439352035522,
@@ -91,7 +92,17 @@ class YumiEnv(gym.Env):
             for jnt, act in enumerate(actions):
                 self.limb.offset_joint_position(jnt, act)
 
+    def _get_distance(self, achieved_goal = None, desired_goal = None):
+        if achieved_goal == None:
+            achieved_goal = self.observation[6:9]
+        if desired_goal == None:
+            desired_goal = self.observation[0:3]
+        return np.linalg.norm(desired_goal - achieved_goal)
 
+    def _done(self):
+        if self._get_distance < self.terminal_distance:
+            return True
+        return False
 
     def step(self, action):
         """Gym environment 'step'
@@ -111,9 +122,7 @@ class YumiEnv(gym.Env):
         # Early stop
         # if the episode should end earlier
         # done = if position outside user model space
-        done = False
-        if np.linalg.norm(self.observation[0:3] - self.observation[6:9])<0.02:
-            done=True
+        done = self._done()
         return self.observation, reward, done, {}
 
     def reset(self):
@@ -166,17 +175,56 @@ class YumiEnv(gym.Env):
             The reward function
             Put your reward function here
         '''
-        distance = abs(np.linalg.norm(self.observation[0:3] - self.observation[6:9]))
-        
-        #reward = 1.0-2*distance
-        
-        min_distance = .01
-        if distance <= min_distance:
+        distance = self._get_distance()
+        return getattr(self,self.reward_name)(distance)
+         
+
+    def original_reward(self, distance):
+        return 1.0 - 2 * distance
+
+    def report_reward(self, distance):
+        if distance < self.terminal_distance:
             reward = 10
         else:
-            reward = -2 * abs(min_distance - 2 * distance)
+            reward = -2 * abs(self.terminal_distance - 2 * distance)
 
         return reward
+
+    def sparse_reward(self, distance):
+        if distance < self.terminal_distance:
+            reward = 0
+        else:
+            reward = -1
+        return reward
+
+
+
+class GoalYumiEnv(GoalEnv, YumiEnv):
+    def __init__(self, *args, **kwargs):
+        YumiEnv.__init__(self, *args, **kwargs)
+        self.reward_name = 'sparse_reward'
+
+    def _make_observation(self):
+        """
+        Helper to create the observation.
+        :return: (OrderedDict<int or ndarray>)
+        """
+        YumiEnv._make_observation(self)
+        self.observation = OrderedDict([
+            ('observation', self.observation),
+            ('achieved_goal', self.observation[6:9]),
+            ('desired_goal', self.observation[0:3])
+        ])
+    def _get_distance(self, achieved_goal = None, desired_goal = None):
+        if achieved_goal == None:
+            achieved_goal = self.observation['achieved_goal']
+        if desired_goal == None:
+            desired_goal = self.observation['desired_goal']
+        return np.linalg.norm(desired_goal - achieved_goal)
+
+    def compute_reward(self, achieved_goal, goal, info):
+        return self.sparse_reward(self._get_distance(achieved_goal, goal))
+
 
 if __name__ == "__main__":
     "Example usage for the YumiRLEnv"
@@ -189,7 +237,7 @@ if __name__ == "__main__":
         action = env.action_space.sample()
         for t in range(5):
             #action = env.action_space.sample()
-            observation, reward, done = env.step(action)
+            observation, reward, done, _ = env.step(action)
             total_reward += reward
             if done:
                 break

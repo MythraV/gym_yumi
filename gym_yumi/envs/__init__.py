@@ -1,2 +1,2 @@
-from gym_yumi.envs.yumi_env import YumiEnv
+from gym_yumi.envs.yumi_env import YumiEnv, GoalYumiEnv
 

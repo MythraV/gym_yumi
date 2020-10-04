@@ -6,3 +6,10 @@ register(
     reward_threshold=10.0,
     kwargs={'limb':'left','goal':'peg_target_res','headless':False,'maxval':0.1}
 )
+
+register(
+    id='goal-yumi-pegtransfer-v0',
+    entry_point='gym_yumi.envs:GoalYumiEnv',
+    reward_threshold=10.0,
+    kwargs={'limb':'left','goal':'peg_target_res','headless':False,'maxval':0.1}
+)
