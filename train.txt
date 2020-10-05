@@ -1,2 +1,2 @@
-mpi -np 8 python train.py --algo her --env goal-yumi-pegtransfer-v0 --tensorboard-log ../tensorboard/her_zoo
+mpirun -np 6 python train.py --algo her --env goal-yumi-pegtransfer-v0 --tensorboard-log ../tensorboard/her_zoo --log-interval 100 --save-freq 100000
 

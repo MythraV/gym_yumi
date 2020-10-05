@@ -48,7 +48,8 @@ def main():
                     verbose=1, tensorboard_log=os.path.join('./tensorboard/her', new_model_name))
    
     checkpoint_callback = CheckpointCallback(save_freq=save_freq, save_path=os.path.join("./models", new_model_name, "checkpoints/"))
-    model.learn(total_timesteps=int(timesteps), callback = checkpoint_callback)
+    model.learn(total_timesteps=int(timesteps), callback = checkpoint_callback, 
+                tb_log_name = new_model_name, log_interval=100)
     model.save(os.path.join('./models', new_model_name))
 
 if __name__ == "__main__":
