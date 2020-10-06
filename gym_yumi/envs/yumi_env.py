@@ -93,9 +93,9 @@ class YumiEnv(gym.Env):
                 self.limb.offset_joint_position(jnt, act)
 
     def _get_distance(self, achieved_goal = None, desired_goal = None):
-        if achieved_goal == None:
+        if type(achieved_goal) == type(None):
             achieved_goal = self.observation[6:9]
-        if desired_goal == None:
+        if type(desired_goal) == type(None):
             desired_goal = self.observation[0:3]
         return np.linalg.norm(desired_goal - achieved_goal)
 
@@ -203,6 +203,7 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
     def __init__(self, *args, **kwargs):
         YumiEnv.__init__(self, *args, **kwargs)
         self.reward_name = 'sparse_reward'
+        self._max_episode_steps = 100
         self.observation_space = spaces.Dict({
             'observation': self.observation_space,
             'achieved_goal': spaces.Box(-np.inf, np.inf, shape=(3,)),
@@ -220,9 +221,9 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
             ('desired_goal', self.observation[0:3])
         ])
     def _get_distance(self, achieved_goal = None, desired_goal = None):
-        if achieved_goal == None:
+        if type(achieved_goal) == type(None):
             achieved_goal = self.observation['achieved_goal']
-        if desired_goal == None:
+        if type(desired_goal) == type(None):
             desired_goal = self.observation['desired_goal']
         return np.linalg.norm(desired_goal - achieved_goal)
 
