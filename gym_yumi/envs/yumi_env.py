@@ -8,6 +8,8 @@ from gym import spaces, GoalEnv
 from collections import OrderedDict
 import numpy as np
 import os
+import random
+import math
 class Yumi():
     def __init__(self):
         joint_names = {'left':[
@@ -24,7 +26,8 @@ class Yumi():
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
 
 class YumiEnv(gym.Env):
-    def __init__(self, limb='left', goal='peg_target_res', reward_name='original_reward', headless=False, mode='passive', maxval=0.1, SCENE_FILE = None):
+    def __init__(self, limb='left', goal='peg_target_res', reward_name='original_reward', headless=False, mode='passive', maxval=0.1, 
+                 normal_offset = False, random_peg = False, SCENE_FILE = None):
         self.pr = PyRep()
         if SCENE_FILE is None:
             SCENE_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'yumi_setup.ttt')
@@ -42,6 +45,7 @@ class YumiEnv(gym.Env):
         shape_names = [goal]
         # Relevant scene objects
         self.oh_shape = [Shape(x) for x in shape_names]
+        self.peg_target = self.oh_shape[0]
         #print("oh_shape 1", self.oh_shape)
         # Add tool tip
         self.oh_shape.append(self.limb.target)
@@ -59,6 +63,10 @@ class YumiEnv(gym.Env):
         self.action_space      = spaces.Box(-act,act)
         self.observation_space = spaces.Box(-obs,obs)
 
+        self.random_peg = random_peg
+        self.normal_offset = normal_offset
+        self.pegs = ['peg_left_{}'.format(i + 1) for i in range(6)]
+        self.pegs.extend(['peg_right_{}'.format(i + 1) for i in range(6)])
         self.reward_name = reward_name
         self.rewardfcn = self._get_reward
         self.terminal_distance = .02
@@ -66,6 +74,7 @@ class YumiEnv(gym.Env):
                              0.9759880900382996, 0.6497860550880432,
                               1.0691887140274048, 1.1606439352035522,
                                0.3141592741012573]
+        self._max_episode_steps = 50
 
     def _make_observation(self):
         """Query V-rep to make observation.
@@ -122,8 +131,12 @@ class YumiEnv(gym.Env):
         # Early stop
         # if the episode should end earlier
         # done = if position outside user model space
-        done = self._done()
-        return self.observation, reward, done, {}
+        # modified to always run until max timesteps
+        done = False
+        info = {
+            'is_success': self._done(),
+        }
+        return self.observation, reward, done, info
 
     def reset(self):
         """Gym environment 'reset'
@@ -134,9 +147,22 @@ class YumiEnv(gym.Env):
         self.pr.stop()
         self.pr.start()
 
+        if self.random_peg:
+            # get a random peg position
+            pos = Shape(self.pegs[random.randrange(len(self.pegs))]).get_position()
+            # update peg position
+            Shape('peg_target_res').set_position(pos)
+            Shape('peg_target').set_position(pos)
+            Shape('peg_target').rotate((0,0, random.random() * 2 * math.pi))
+
+        
+        
         self.limb.set_joint_mode(self.mode)
         for i in range(len(self.limb.joints)):
-            self.limb.set_joint_position(i,self.default_config[i])
+            offset = 0
+            if self.normal_offset:
+                offset = np.random.normal(0, .05)
+            self.limb.set_joint_position(i,self.default_config[i] + offset)
         self._make_observation()
         #print(self.observation)
         return self.observation
@@ -203,7 +229,6 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
     def __init__(self, *args, **kwargs):
         YumiEnv.__init__(self, *args, **kwargs)
         self.reward_name = 'sparse_reward'
-        self._max_episode_steps = 100
         self.observation_space = spaces.Dict({
             'observation': self.observation_space,
             'achieved_goal': spaces.Box(-np.inf, np.inf, shape=(3,)),
