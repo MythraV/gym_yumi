@@ -10,6 +10,7 @@ import numpy as np
 import os
 import random
 import math
+
 class Yumi():
     def __init__(self):
         joint_names = {'left':[
@@ -25,9 +26,12 @@ class Yumi():
         self.left_gripper = TwoFingerGripper(['gripper_l_joint','gripper_l_joint_m'])
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
 
+# goals: approach, grasp
+
 class YumiEnv(gym.Env):
-    def __init__(self, limb='left', goal='peg_target_res', reward_name='original_reward', headless=False, mode='passive', maxval=0.1, 
-                 normal_offset = False, random_peg = False, SCENE_FILE = None):
+    def __init__(self, limb='left', goals=['approach'], reward_name='original_reward', headless=False, mode='passive', maxval=0.1, 
+                 normal_offset = False, random_peg = False, SCENE_FILE = None, arm_configs = None, 
+                 terminal_distance=0.02, lift_height = 0.05):
         self.pr = PyRep()
         if SCENE_FILE is None:
             SCENE_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'yumi_setup.ttt')
@@ -42,7 +46,7 @@ class YumiEnv(gym.Env):
         self.mode = mode
         if mode=='force':
             self.limb.set_joint_mode('force')
-        shape_names = [goal]
+        shape_names = ['peg_target_res']
         # Relevant scene objects
         self.oh_shape = [Shape(x) for x in shape_names]
         self.peg_target = self.oh_shape[0]
@@ -69,16 +73,26 @@ class YumiEnv(gym.Env):
         self.pegs.extend(['peg_right_{}'.format(i + 1) for i in range(6)])
         self.reward_name = reward_name
         self.rewardfcn = self._get_reward
-        self.terminal_distance = .02
+        self.terminal_distance = terminal_distance
+        self.lift_height = lift_height
+        self.target_peg_pos = None
+
+
+        valid_goals = ['approach','grasp']
+        for goal in goals:
+            assert (goal in valid_goals), "Invalid goal, check valid_goals"
+        self.goals = goals
+
         self.default_config = [-1.0122909545898438, -1.5707963705062866,
                              0.9759880900382996, 0.6497860550880432,
                               1.0691887140274048, 1.1606439352035522,
                                0.3141592741012573]
+        self.arm_configs = arm_configs # dictionary, containing array of joint configs for each peg position
         self._max_episode_steps = 50
 
     def _make_observation(self):
         """Query V-rep to make observation.
-           The observation is stored in self.observation
+            The observation is stored in self.observation
         """
         lst_o = []
         # example: include position, linear and angular velocities of all shapes
@@ -147,24 +161,43 @@ class YumiEnv(gym.Env):
         self.pr.stop()
         self.pr.start()
 
+        # get which peg the object is placed on
+        peg_name = 'peg_left_2'
         if self.random_peg:
             # get a random peg position
-            pos = Shape(self.pegs[random.randrange(len(self.pegs))]).get_position()
+            peg_name = self.pegs[random.randrange(len(self.pegs))]
+            pos = Shape(peg_name).get_position()
             # update peg position
             Shape('peg_target_res').set_position(pos)
-            Shape('peg_target').set_position(pos)
-            Shape('peg_target').rotate((0,0, random.random() * 2 * math.pi))
+            #Shape('peg_target').set_position(pos)
+            #Shape('peg_target').rotate((0,0, random.random() * 2 * math.pi))
 
-        
-        
+        # set up env for goal
+        # sampel a random goal
+        # goal = self.goals[random.randrange(len(self.goals))]
+
         self.limb.set_joint_mode(self.mode)
-        for i in range(len(self.limb.joints)):
-            offset = 0
-            if self.normal_offset:
-                offset = np.random.normal(0, .05)
-            self.limb.set_joint_position(i,self.default_config[i] + offset)
+        if self.goals[0] == 'approach':
+            for i in range(len(self.limb.joints)):
+                offset = 0
+                if self.normal_offset:
+                    offset = np.random.normal(0, .05)
+                self.limb.set_joint_position(i,self.default_config[i] + offset)
+            self.target_peg_pos = None
+        elif self.goals[0] == 'grasp':
+            assert self.arm_configs != None, "Arm config must be set for the grasp task"
+            # get a random config for the peg
+            num_configs = len(self.arm_configs[peg_name])
+            joint_config = self.arm_configs[peg_name][random.randrange(num_configs)]
+            # update joint positions
+            for i in range(len(self.limb.joints)):
+                self.limb.set_joint_position(i, joint_config[i])
+            # get target peg position
+            self.target_peg_pos = Shape('peg_target_res').get_position()
+            self.target_peg_pos[2] += self.lift_height
+        
+        
         self._make_observation()
-        #print(self.observation)
         return self.observation
 
     def render(self, mode='human', close=False):
@@ -201,9 +234,13 @@ class YumiEnv(gym.Env):
             The reward function
             Put your reward function here
         '''
-        distance = self._get_distance()
+        if self.goals[0] == 'approach':
+            achieved_goal = self.observation[0:3]
+            desired_goal = self.target_peg_pos
+            distance = self._get_distance(achieved_goal=achieved_goal, desired_goal=desired_goal)
+        else:
+            distance = self._get_distance()
         return getattr(self,self.reward_name)(distance)
-         
 
     def original_reward(self, distance):
         return 1.0 - 2 * distance
