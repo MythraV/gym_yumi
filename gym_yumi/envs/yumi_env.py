@@ -242,7 +242,7 @@ class YumiEnv(gym.Env):
             Put your reward function here
         '''
         if self.goals[0] == 'grasp':
-            achieved_goal = self.observation[0:3]
+            achieved_goal = self.observation[6:9]
             desired_goal = self.target_peg_pos
             distance = self._get_distance(achieved_goal=achieved_goal, desired_goal=desired_goal)
         else:
@@ -284,11 +284,26 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
         :return: (OrderedDict<int or ndarray>)
         """
         YumiEnv._make_observation(self)
+
+        # change goal depending on grasp or approach
+        if self.goals[0] == 'grasp':
+            desired_goal = self.target_peg_pos
+        else:
+            desired_goal = self.observation[0:3]
+
         self.observation = OrderedDict([
             ('observation', self.observation),
             ('achieved_goal', self.observation[6:9]),
-            ('desired_goal', self.observation[0:3])
+            ('desired_goal', desired_goal)
         ])
+    def _get_reward(self):
+        '''
+            The reward function
+            Put your reward function here
+        '''
+        distance = self._get_distance()
+        return getattr(self,self.reward_name)(distance)
+
     def _get_distance(self, achieved_goal = None, desired_goal = None):
         if type(achieved_goal) == type(None):
             achieved_goal = self.observation['achieved_goal']
