@@ -26,6 +26,10 @@ class Yumi():
         self.right = Limb('yumi_r_tip', joint_names['right'])
         self.left_gripper = TwoFingerGripper(['gripper_l_joint','gripper_l_joint_m'])
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
+        self.right_gripper.open()
+        self.left_gripper.open()
+        self.left_open = True
+        self.right_open = True
 
 # goals: approach, grasp
 
@@ -42,12 +46,18 @@ class YumiEnv(gym.Env):
         yumi = Yumi()
         if limb=='left':
             self.limb = yumi.left
+            self.gripper = yumi.left_gripper
+            self.limb_name = 'left'
         elif limb=='right':
             self.limb = yumi.right
+            self.gripper = yumi.right_gripper
+            self.limb_name = 'right'
+
         self.mode = mode
         if mode=='force':
             self.limb.set_joint_mode('force')
         shape_names = ['peg_target_res']
+
         # Relevant scene objects
         self.oh_shape = [Shape(x) for x in shape_names]
         self.peg_target = self.oh_shape[0]
@@ -55,18 +65,25 @@ class YumiEnv(gym.Env):
         # Add tool tip
         self.oh_shape.append(self.limb.target)
         #print("oh_shape 2", self.oh_shape)
+
         # Number of actions
         num_act = len(self.limb.joints)
+    
+
         # Observation space size
         # 6 per object (xyzrpy) + 6 dimensions
-        num_obs = len(self.oh_shape)*3*2
-        #print("num_obs", num_obs)
+        num_obs_obj = len(self.oh_shape)*3*2
         # Setup action and observation spaces
         act = np.array( [maxval] * num_act )
-        obs = np.array(          [np.inf]          * num_obs )
+        obs = np.array(          [np.inf]          * num_obs_obj )
 
-        self.action_space      = spaces.Box(-act,act)
-        self.observation_space = spaces.Box(-obs,obs)
+        # add to obs/act space if grasp for gripper
+        if goals[0] == 'grasp':
+            self.action_space      = spaces.Box(np.append(-act,0) , np.append(act, 1))
+            self.observation_space = spaces.Box(np.append(-obs, 0), np.append(obs, 1))
+        else:
+            self.action_space      = spaces.Box(-act,act)
+            self.observation_space = spaces.Box(-obs,obs)
 
         self.random_peg = random_peg
         self.normal_offset = normal_offset
@@ -106,20 +123,28 @@ class YumiEnv(gym.Env):
         for oh in self.oh_shape:
             lst_o.extend(oh.get_position()) 	# position
             lst_o.extend(oh.get_orientation())
-
+        if self.goals[0] == 'grasp':
+            lst_o.append(self.gripper.get_open())
         self.observation = np.array(lst_o).astype('float32')
 
     def _make_action(self, actions):
         """Query V-rep to make action.
            no return value
         """
+        if self.goals[0] == 'grasp':
+            # map continuous action (0 - 1 to discrete control)
+            if actions[0] > .5:
+                self.gripper.open()
+            else:
+                self.gripper.close()
+
         if self.mode=='force':
             # example: set a velocity for each joint
-            for jnt, act in enumerate(actions):
+            for jnt, act in enumerate(actions[1:]):
                 self.limb.set_joint_velocity(jnt, act)
         else:
             # example: set a offset for each joint
-            for jnt, act in enumerate(actions):
+            for jnt, act in enumerate(actions[:]):
                 self.limb.offset_joint_position(jnt, act)
 
     def _get_distance(self, achieved_goal = None, desired_goal = None):
@@ -202,6 +227,9 @@ class YumiEnv(gym.Env):
             # get target peg position
             self.target_peg_pos = Shape('peg_target_res').get_position()
             self.target_peg_pos[2] += self.lift_height
+
+            # also reset gripper if grasp
+            self.gripper.open()
         
         
         self._make_observation()

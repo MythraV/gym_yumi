@@ -18,6 +18,12 @@ class TwoFingerGripper():
         self.joints[0].set_joint_position(self.open_pos)
         self.joints[1].set_joint_position(self.open_pos)
 
+    def get_open(self):
+        if self.joints[0].get_joint_position() >= self.open_pos:
+            return 1
+        else:
+            return 0
+
 class Limb():
     def __init__(self, tip, joint_names):
         self.target = Dummy(tip)
