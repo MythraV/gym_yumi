@@ -131,20 +131,22 @@ class YumiEnv(gym.Env):
         """Query V-rep to make action.
            no return value
         """
+        joint_actions = actions
         if self.goals[0] == 'grasp':
             # map continuous action (0 - 1 to discrete control)
             if actions[0] > .5:
                 self.gripper.open()
             else:
                 self.gripper.close()
+            joint_actions = actions[1:]
 
         if self.mode=='force':
             # example: set a velocity for each joint
-            for jnt, act in enumerate(actions[1:]):
+            for jnt, act in enumerate(joint_actions):
                 self.limb.set_joint_velocity(jnt, act)
         else:
             # example: set a offset for each joint
-            for jnt, act in enumerate(actions[:]):
+            for jnt, act in enumerate(joint_actions):
                 self.limb.offset_joint_position(jnt, act)
 
     def _get_distance(self, achieved_goal = None, desired_goal = None):
