@@ -1,6 +1,7 @@
 from gym_yumi.envs.robot import *
 from pyrep import PyRep
 from pyrep.objects.shape import Shape
+from pyrep.objects.dummy import Dummy
 from pyrep.objects.object import Object
 import time
 import gym
@@ -134,7 +135,7 @@ class YumiEnv(gym.Env):
         joint_actions = actions
         if self.goals[0] == 'grasp':
             # map continuous action (0 - 1 to discrete control)
-            if actions[0] > .5:
+            if actions[-1] > .5:
                 self.gripper.open()
             else:
                 self.gripper.close()
@@ -272,7 +273,7 @@ class YumiEnv(gym.Env):
             Put your reward function here
         '''
         if self.goals[0] == 'grasp':
-            achieved_goal = self.observation[6:9]
+            achieved_goal = Shape('peg_target_res').get_position()
             desired_goal = self.target_peg_pos
             distance = self._get_distance(achieved_goal=achieved_goal, desired_goal=desired_goal)
         else:
@@ -308,6 +309,15 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
             'achieved_goal': spaces.Box(-np.inf, np.inf, shape=(3,)),
             'desired_goal': spaces.Box(-np.inf, np.inf, shape=(3,))
         })
+        self.grasped_once = False
+
+    def reset(self):
+        """Gym environment 'reset'
+        """
+        observation = YumiEnv.reset(self)
+        self.grasped_once = False
+        return observation
+
     def _make_observation(self):
         """
         Helper to create the observation.
@@ -317,13 +327,30 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
 
         # change goal depending on grasp or approach
         if self.goals[0] == 'grasp':
-            desired_goal = self.target_peg_pos
+            if self.grasped_once:
+                desired_goal = self.target_peg_pos
+                achieved_goal = Shape('peg_target_res').get_position()
+            else:
+                achieved_goal = self.observation[6:9]
+                grasp_points = [Dummy('grasp_point1').get_position(), Dummy('grasp_point2').get_position(), Dummy('grasp_point3').get_position()]
+                min_distance = float('inf')
+                distances = []
+                min_index = -1
+                for i in range(len(grasp_points)):
+                    distance = self._get_distance(achieved_goal=achieved_goal, desired_goal=grasp_points[i])
+                    distances.append(distance)
+                    if distance < min_distance:
+                        min_distance = distance
+                        min_index = i
+                desired_goal = grasp_points[min_index]
+                
         else:
             desired_goal = self.observation[0:3]
+            achieved_goal = self.observation[6:9]
 
         self.observation = OrderedDict([
             ('observation', self.observation),
-            ('achieved_goal', self.observation[6:9]),
+            ('achieved_goal', achieved_goal),
             ('desired_goal', desired_goal)
         ])
     def _get_reward(self):
@@ -341,8 +368,18 @@ class GoalYumiEnv(YumiEnv, GoalEnv):
             desired_goal = self.observation['desired_goal']
         return np.linalg.norm(desired_goal - achieved_goal)
 
+    # additional argument, grasp toggle to trigger switching between training goal if goal is achieved
+    def sparse_reward(self, distance, grasp_toggle = True):
+        if distance < self.terminal_distance:
+            reward = 0
+            if grasp_toggle:
+                self.grasped_once = True
+        else:
+            reward = -1
+        return reward
+
     def compute_reward(self, achieved_goal, goal, info):
-        return self.sparse_reward(self._get_distance(achieved_goal, goal))
+        return self.sparse_reward(self._get_distance(achieved_goal, goal), grasp_toggle = False)
 
 
 if __name__ == "__main__":
