@@ -37,7 +37,7 @@ class Yumi():
 class YumiEnv(gym.Env):
     def __init__(self, limb='left', goals=['approach'], reward_name='original_reward', headless=False, mode='passive', maxval=0.1, 
                  normal_offset = False, random_peg = False, SCENE_FILE = None, arm_configs = None, 
-                 terminal_distance=0.02, lift_height = 0.05):
+                 terminal_distance=0.02, lift_height = 0.05, random_peg_xy = False):
         self.pr = PyRep()
         if SCENE_FILE is None:
             SCENE_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'yumi_setup.ttt')
@@ -114,6 +114,22 @@ class YumiEnv(gym.Env):
             with open(arm_configs) as load_file:
                 self.arm_configs = json.load(load_file)
         self._max_episode_steps = 50
+        
+        # parameter for random peg xy
+        self.random_peg_xy = random_peg_xy
+        self.random_peg_xy_run = False
+        self.peg_xyz = [3.2516e-1, 7.6894e-2, 1.0218e0]
+        self.peg_xy_offset = {
+            "x_min": -0.05,
+            "x_max": 0.05,
+            "y_min": -0.05,
+            "y_max": 0.05,
+        }
+    def get_random_peg_xyz(self):
+        x_offset = random.random() * (self.peg_xy_offset['x_max'] - self.peg_xy_offset['x_min']) + self.peg_xy_offset['x_min']
+        y_offset = random.random() * (self.peg_xy_offset['y_max'] - self.peg_xy_offset['y_min']) + self.peg_xy_offset['y_min']
+        return [self.peg_xyz[0] + x_offset, self.peg_xyz[1] + y_offset, self.peg_xyz[2]]
+
 
     def _make_observation(self):
         """Query V-rep to make observation.
@@ -190,22 +206,42 @@ class YumiEnv(gym.Env):
     def reset(self):
         """Gym environment 'reset'
         """
-        if self.pr.running:
-            self.pr.stop()
+        #if self.pr.running:
+        #    self.pr.stop()
+        if not self.pr.running:
+            self.pr.start()
+        # modified restart
+        if not self.pr.running:
+            self.pr.start()
         #self.pr.start()
-        #self.pr.stop()
-        # self.pr.start()
-
+        self.pr.stop()
+        self.pr.start()
+        self.pr.step()
+        self.pr.step()
+        
+        # If approach and random_peg_xy, then randomly put peg in xy plane and have goal be in the same xy plane
+        self.random_peg_xy_run = False
+        if self.goals[0] == 'grasp':
+            if self.random_peg_xy:
+                if random.random() > .5:
+                    self.random_peg_xy_run = True
+        
+        
         # get which peg the object is placed on
         self.peg_name = 'peg_left_2'
         if self.random_peg:
-            # get a random peg position
-            self.peg_name = self.pegs[random.randrange(len(self.pegs))]
-            pos = Shape(self.peg_name).get_position()
-            # update peg position
-            Shape('peg_target_res').set_position(pos)
-            #Shape('peg_target').set_position(pos)
-            #Shape('peg_target').rotate((0,0, random.random() * 2 * math.pi))
+            if self.random_peg_xy_run:
+                # get a random xy (and a set z)
+                new_pos = self.get_random_peg_xyz()
+                Shape('peg_target_res').set_position(new_pos)
+            else:
+                # get a random peg position
+                self.peg_name = self.pegs[random.randrange(len(self.pegs))]
+                pos = Shape(self.peg_name).get_position()
+                # update peg position
+                Shape('peg_target_res').set_position(pos)
+                #Shape('peg_target').set_position(pos)
+                #Shape('peg_target').rotate((0,0, random.random() * 2 * math.pi))
 
         # set up env for goal
         # sampel a random goal
@@ -219,17 +255,32 @@ class YumiEnv(gym.Env):
                     offset = np.random.normal(0, .05)
                 self.limb.set_joint_position(i,self.default_config[i] + offset)
             self.target_peg_pos = None
+
         elif self.goals[0] == 'grasp':
             assert self.arm_configs != None, "Arm config must be set for the grasp task"
-            # get a random config for the peg
-            num_configs = len(self.arm_configs[self.peg_name])
-            joint_config = self.arm_configs[self.peg_name][random.randrange(num_configs)]
-            # update joint positions
-            for i in range(len(self.limb.joints)):
-                self.limb.set_joint_position(i, joint_config[i])
-            # get target peg position
-            self.target_peg_pos = Shape('peg_target_res').get_position()
-            self.target_peg_pos[2] += self.lift_height
+            
+            if self.random_peg_xy_run:
+                # put arm in original position
+                for i in range(len(self.limb.joints)):
+                    offset = 0
+                    if self.normal_offset:
+                        offset = np.random.normal(0, .05)
+                    self.limb.set_joint_position(i,self.default_config[i] + offset)
+            else:
+                # get a random config for the peg
+                num_configs = len(self.arm_configs[self.peg_name])
+                joint_config = self.arm_configs[self.peg_name][random.randrange(num_configs)]
+                # update joint positions
+                for i in range(len(self.limb.joints)):
+                    self.limb.set_joint_position(i, joint_config[i])
+
+            if self.random_peg_xy_run:
+                # target is a random location in the xy plane, but with same z 
+                self.target_peg_pos = self.get_random_peg_xyz()
+            else:
+                # target is same xy, but with offset z (peg task)
+                self.target_peg_pos = Shape('peg_target_res').get_position()
+                self.target_peg_pos[2] += self.lift_height
 
             # also reset gripper if grasp
             self.gripper.open()
