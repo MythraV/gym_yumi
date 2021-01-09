@@ -1,4 +1,4 @@
-from gym_yumi.envs import GoalYumiEnv
+from gym_yumi.envs import YumiEnv
 from gym_yumi.envs.subproc_vec_env import SubprocVecEnv
 
 import gym
@@ -7,7 +7,7 @@ from gym import spaces
 class SubprocVecYumiEnv(gym.Env):
   def __init__(self, **kwargs):
     def create_env():
-      return GoalYumiEnv(**kwargs)
+      return YumiEnv(**kwargs)
     
     self.env = SubprocVecEnv([create_env])
 
@@ -18,7 +18,7 @@ class SubprocVecYumiEnv(gym.Env):
     return self.env.step([action])
     
   def reset(self):
-    return self.env.reset()
+    return (self.env.reset())[0]
 
   def render(self, mode='human', close=False):
     # Render the environment to the screen

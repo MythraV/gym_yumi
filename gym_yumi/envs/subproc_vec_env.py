@@ -108,8 +108,9 @@ class SubprocVecEnv(VecEnv):
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
-        obs, rews, dones, infos = zip(*results)
-        return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
+        #obs, rews, dones, infos = zip(*results)
+        #return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
+        return results[0]
 
     def seed(self, seed=None):
         for idx, remote in enumerate(self.remotes):

@@ -44,7 +44,7 @@ register(
 )
 
 register(
-    id='goal-original-yumi-pegtransfer-vec-v0',
+    id='yumi-pegtransfer-vec-v0',
     entry_point='gym_yumi.envs:SubprocVecYumiEnv',
     reward_threshold=10.0,
     kwargs={'limb':'left','headless':True,'maxval':0.1,
