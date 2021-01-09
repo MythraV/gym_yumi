@@ -13,6 +13,7 @@ import random
 import math
 import json
 
+
 class Yumi():
     def __init__(self):
         joint_names = {'left':[
@@ -45,6 +46,7 @@ class YumiEnv(gym.Env):
         # SCENE_FILE = '/homes/lawson95/CRL/gym_yumi/gym_yumi/envs/yumi_setup.ttt'
         self.pr.launch(SCENE_FILE, headless=headless)
         self.pr.start()
+        
         yumi = Yumi()
         if limb=='left':
             self.limb = yumi.left
