@@ -25,7 +25,6 @@ class Yumi():
             'yumi_r_joint5','yumi_r_joint6','yumi_r_joint7'
         ]}
         self.left = Limb('yumi_l_tip', joint_names['left'])
-        self.right = Limb('yumi_r_tip', joint_names['right'])
         self.left_gripper = TwoFingerGripper(['gripper_l_joint','gripper_l_joint_m'])
         self.right_gripper = TwoFingerGripper(['gripper_r_joint','gripper_r_joint_m'])
         self.right_gripper.open()
@@ -135,6 +134,10 @@ class YumiEnv(gym.Env):
             "y_min": -0.05,
             "y_max": 0.05,
         }
+        self.yumi_body = Shape('yumi_body_respondable')
+        self.yumi_body_config = self.yumi_body.get_configuration_tree()
+        self.yumi_peg_config = Shape('peg_target_res').get_configuration_tree()
+
     def get_random_peg_xyz(self):
         x_offset = random.random() * (self.peg_xy_offset['x_max'] - self.peg_xy_offset['x_min']) + self.peg_xy_offset['x_min']
         y_offset = random.random() * (self.peg_xy_offset['y_max'] - self.peg_xy_offset['y_min']) + self.peg_xy_offset['y_min']
@@ -193,6 +196,11 @@ class YumiEnv(gym.Env):
         """
         # Assert the action space space contains the action
         assert self.action_space.contains(action), "Action {} ({}) is invalid".format(action, type(action))
+        
+        # make sure phyics on
+        if not self.pr.running:
+            self.pr.start()
+            
         # Actuate
         self._make_action(action)
         # Step
@@ -216,16 +224,27 @@ class YumiEnv(gym.Env):
     def reset(self):
         """Gym environment 'reset'
         """
-        if self.physics_on:
-            # modified restart
-            if not self.pr.running:
-                self.pr.start()
-            #self.pr.start()
-            self.pr.stop()
-        else:
-            if self.pr.running:
-                self.pr.stop()
+        # if self.physics_on:
+        #     # modified restart
+        #     if not self.pr.running:
+        #         self.pr.start()
+        #     #self.pr.start()
+        #     self.pr.stop()
+        #     self.pr.start()
+        #     self.pr.step()
+        #     self.pr.step()
+        # else:
+        #     if self.pr.running:
+        #         self.pr.stop()
         
+        if not self.pr.running:
+             self.pr.start()
+
+        # reset body and peg
+        self.pr.set_configuration_tree(self.yumi_body_config)
+        self.pr.set_configuration_tree(self.yumi_peg_config)
+
+
         # If approach and random_peg_xy, then randomly put peg in xy plane and have goal be in the same xy plane
         self.random_peg_xy_run = False
         if self.goals[0] == 'grasp':
@@ -292,21 +311,19 @@ class YumiEnv(gym.Env):
 
 
             if self.random_peg_xy_run:
-                # target is a random location in the xy plane, but with same z 
-                self.target_peg_pos = self.get_random_peg_xyz()
-            else:
-                # target is same xy, but with offset z (peg task)
-                self.target_peg_pos = Shape('peg_target_res').get_position()
-                self.target_peg_pos[2] += self.lift_height
-
-            # also reset gripper if grasp
-            self.gripper.open()
+                self.gripper.open()
         
-        if self.physics_on:
-            self.pr.start()
-            self.pr.step()
-            self.pr.step()
+        # if self.physics_on:
+        #     if not self.pr.running:
+        #         self.pr.start()
+        #         self.pr.step()
+        #         self.pr.step()
+        
         self._make_observation()
+
+        if not self.pr.running:
+             self.pr.start()
+
         return self.observation
 
     def render(self, mode='human', close=False):
