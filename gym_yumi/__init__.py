@@ -4,7 +4,11 @@ register(
     id='yumi-pegtransfer-v0',
     entry_point='gym_yumi.envs:YumiEnv',
     reward_threshold=10.0,
+<<<<<<< HEAD
     kwargs={'limb':'left','headless':False,'maxval':0.1}
+=======
+    kwargs={'limb':'left','goals': ['approach'],'headless':False,'maxval':0.1}
+>>>>>>> f03d9b25788760b865be722a3e28ffaa11b20f96
 )
 
 register(
