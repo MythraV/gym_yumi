@@ -4,7 +4,7 @@ register(
     id='yumi-pegtransfer-v0',
     entry_point='gym_yumi.envs:YumiEnv',
     reward_threshold=10.0,
-    kwargs={'limb':'left','goal':'peg_target_res','headless':False,'maxval':0.1}
+    kwargs={'limb':'left','headless':False,'maxval':0.1}
 )
 
 register(
@@ -47,8 +47,8 @@ register(
     id='yumi-pegtransfer-vec-v0',
     entry_point='gym_yumi.envs:SubprocVecYumiEnv',
     reward_threshold=10.0,
-    kwargs={'limb':'left','headless':False,'maxval':0.1,
-            'random_peg':True, 'normal_offset':True,
+    kwargs={'limb':'left','headless':True,'maxval':0.1,
+            'random_peg':True, 'normal_offset':True,'reward_name':'report_reward'
             },
     max_episode_steps=50
 )
