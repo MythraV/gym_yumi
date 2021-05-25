@@ -28,7 +28,7 @@ Test environment with gym
 ```bash
 python
 import gym
-env = gym.make('gym-yumi:yumi-pegtransfer-v0')
+env = gym.make('gym_yumi:yumi-pegtransfer-v0')
 ```
 Running with openai/baselines or stable_baselines
 ```bash
